@@ -16,6 +16,7 @@
     "health:hr": "node src/health-cli.js hr",
     "health:activity": "node src/health-cli.js activity",
     "health:metric": "node src/health-cli.js metric",
+    "health:buckets": "node src/health-cli.js buckets",
     "health:save": "node src/health-cli.js save",
     "ngrok": "ngrok http 8080 --url https://impatient-ounce-unstaffed.ngrok-free.dev"
   },

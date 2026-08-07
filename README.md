@@ -192,6 +192,7 @@ npm run health:sleep -- --days 7
 npm run health:hr -- --days 7
 npm run health:activity -- --days 7
 npm run health:metric -- --name heart_rate_variability --days 30
+npm run health:buckets -- --name heart_rate --days 21 --bucket 60
 ```
 
 Default output is compact JSON for chat context. Add `--details true` when an agent needs daily rows:
@@ -200,6 +201,15 @@ Default output is compact JSON for chat context. Add `--details true` when an ag
 npm run health:sleep -- --days 7 --details true
 npm run health:summary -- --days 7 --details true
 ```
+
+Use bucketed metric output for hourly or finer time-of-day analysis:
+
+```powershell
+npm run health:buckets -- --name heart_rate --days 21 --bucket 60
+npm run health:buckets -- --name heart_rate --days 21 --bucket 15 --sort max --limit 20
+```
+
+Allowed bucket sizes are `5`, `10`, `15`, `30`, `60`, `120`, `240`, and `1440` minutes.
 
 ## Agent Harness
 

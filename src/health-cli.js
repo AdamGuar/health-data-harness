@@ -5,6 +5,7 @@ import {
   getActivity,
   getDateRange,
   getHeartRate,
+  getMetricBuckets,
   getMetricDaily,
   getMetrics,
   getOverview,
@@ -46,6 +47,8 @@ function run(name, options) {
       return withHealthDb((db) => compact({ ok: true, ...getActivity(db, options) }, options));
     case "metric":
       return withHealthDb((db) => ({ ok: true, ...getMetricDaily(db, options) }));
+    case "buckets":
+      return withHealthDb((db) => ({ ok: true, ...getMetricBuckets(db, options) }));
     case "save":
       return saveArtifact(options);
     default:
@@ -118,6 +121,8 @@ function help() {
       "npm run health:hr -- --days 7",
       "npm run health:activity -- --days 7",
       "npm run health:metric -- --name heart_rate_variability --days 30",
+      "npm run health:buckets -- --name heart_rate --days 21 --bucket 60",
+      "npm run health:buckets -- --name heart_rate --days 21 --bucket 15 --sort max --limit 20",
       "npm run health:save -- --title weekly-review --body \"# Review\""
     ]
   };

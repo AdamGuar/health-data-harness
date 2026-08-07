@@ -137,6 +137,28 @@ export function getMetricDaily(db, options = {}) {
   };
 }
 
+export function getMetricBuckets(db, options = {}) {
+  const name = options.name;
+  if (!name || typeof name !== "string") {
+    throw new Error("Missing required --name <metric_name>.");
+  }
+
+  const bucketMinutes = normalizeBucketMinutes(options.bucket ?? options.resolution ?? 60);
+  const range = getRecentDayRange(db, normalizeDays(options.days));
+  const sort = normalizeBucketSort(options.sort);
+  const limit = normalizeLimit(options.limit);
+  const rows = getMetricBucketRows(db, name, range, bucketMinutes, sort, limit);
+
+  return {
+    range,
+    metric: name,
+    bucketMinutes,
+    sort,
+    limit,
+    rows
+  };
+}
+
 function getRecentDayRange(db, days = DEFAULT_DAYS) {
   const max = db
     .prepare("SELECT MAX(day) AS maxDay FROM metric_points WHERE day IS NOT NULL")
@@ -172,6 +194,85 @@ function getMetricDailyRows(db, metricNames, range) {
     `
     )
     .all(...metricNames, range.firstDay, range.lastDay);
+}
+
+function getMetricBucketRows(db, metricName, range, bucketMinutes, sort, limit) {
+  if (!range.firstDay || !range.lastDay) {
+    return [];
+  }
+
+  const orderBy = {
+    time: "bucketStart ASC",
+    max: "maxValue DESC, bucketStart ASC",
+    avg: "avgValue DESC, bucketStart ASC",
+    samples: "samples DESC, bucketStart ASC"
+  }[sort];
+
+  const limitSql = limit === null ? "" : "LIMIT ?";
+  const params = [
+    metricName,
+    range.firstDay,
+    range.lastDay,
+    bucketMinutes,
+    bucketMinutes
+  ];
+
+  if (limit !== null) {
+    params.push(limit);
+  }
+
+  return db
+    .prepare(
+      `
+      WITH source_rows AS (
+        SELECT
+          metric_name,
+          units,
+          day,
+          CAST(substr(date_text, 12, 2) AS INTEGER) AS hour,
+          CAST(substr(date_text, 15, 2) AS INTEGER) AS minute,
+          COALESCE(qty, avg_value) AS value,
+          COALESCE(min_value, avg_value, qty) AS low_value,
+          COALESCE(max_value, avg_value, qty) AS high_value
+        FROM metric_points
+        WHERE metric_name = ?
+          AND day BETWEEN ? AND ?
+          AND date_text IS NOT NULL
+          AND COALESCE(qty, avg_value, min_value, max_value) IS NOT NULL
+      ),
+      bucketed AS (
+        SELECT
+          metric_name,
+          units,
+          day,
+          CAST(((hour * 60 + minute) / ?) AS INTEGER) * ? AS bucket_start_minute,
+          value,
+          low_value,
+          high_value
+        FROM source_rows
+      )
+      SELECT
+        metric_name AS metricName,
+        day,
+        printf(
+          '%s %02d:%02d',
+          day,
+          CAST(bucket_start_minute / 60 AS INTEGER),
+          bucket_start_minute % 60
+        ) AS bucketStart,
+        MAX(units) AS units,
+        COUNT(*) AS samples,
+        ROUND(SUM(value), 3) AS sumValue,
+        ROUND(AVG(value), 3) AS avgValue,
+        ROUND(MIN(low_value), 3) AS minValue,
+        ROUND(MAX(high_value), 3) AS maxValue
+      FROM bucketed
+      GROUP BY metric_name, day, bucket_start_minute
+      ORDER BY ${orderBy}
+      ${limitSql}
+    `
+    )
+    .all(...params);
 }
 
 function getSleepRows(db, range) {
@@ -252,6 +353,35 @@ function normalizeDays(value) {
     throw new Error("--days must be an integer between 1 and 3660.");
   }
   return days;
+}
+
+function normalizeBucketMinutes(value) {
+  const minutes = Number.parseInt(value, 10);
+  const allowed = new Set([5, 10, 15, 30, 60, 120, 240, 1440]);
+  if (!allowed.has(minutes)) {
+    throw new Error("--bucket must be one of: 5, 10, 15, 30, 60, 120, 240, 1440.");
+  }
+  return minutes;
+}
+
+function normalizeBucketSort(value) {
+  const sort = value ?? "time";
+  if (!["time", "max", "avg", "samples"].includes(sort)) {
+    throw new Error("--sort must be one of: time, max, avg, samples.");
+  }
+  return sort;
+}
+
+function normalizeLimit(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const limit = Number.parseInt(value, 10);
+  if (!Number.isFinite(limit) || limit < 1 || limit > 10000) {
+    throw new Error("--limit must be an integer between 1 and 10000.");
+  }
+  return limit;
 }
 
 function average(values) {
