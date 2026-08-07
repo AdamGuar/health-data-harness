@@ -19,10 +19,13 @@ export function importIncomingDirectory() {
 
     return {
       dbPath: db.name,
-      files: results,
       importedFiles: results.filter((result) => result.imported).length,
       skippedFiles: results.filter((result) => result.skipped).length,
-      points: results.reduce((sum, result) => sum + (result.pointsCount ?? 0), 0)
+      json: summarizeJsonFiles(results),
+      importedThisRun: summarizeImportedThisRun(results),
+      database: getDatabaseStats(db),
+      checks: getDatabaseChecks(db),
+      files: results
     };
   } finally {
     db.close();
@@ -36,6 +39,10 @@ export function importSavedJsonFile(filePath) {
     rebuildDailySummaries(db);
     return {
       dbPath: db.name,
+      json: summarizeJsonFiles([result]),
+      importedThisRun: summarizeImportedThisRun([result]),
+      database: getDatabaseStats(db),
+      checks: getDatabaseChecks(db),
       ...result
     };
   } finally {
@@ -48,6 +55,21 @@ function importHealthFile(db, filePath) {
   const fileName = path.basename(absolutePath);
   const raw = fs.readFileSync(absolutePath);
   const sha256 = crypto.createHash("sha256").update(raw).digest("hex");
+  const payload = JSON.parse(raw.toString("utf8"));
+  const metrics = payload?.data?.metrics;
+  const jsonStats = getJsonStats(metrics);
+
+  if (!Array.isArray(metrics)) {
+    return {
+      fileName,
+      sizeBytes: raw.length,
+      sha256,
+      json: jsonStats,
+      skipped: true,
+      reason: "missing_data_metrics"
+    };
+  }
+
   const existingByHash = db
     .prepare("SELECT id, file_name FROM ingestions WHERE sha256 = ?")
     .get(sha256);
@@ -55,6 +77,9 @@ function importHealthFile(db, filePath) {
   if (existingByHash) {
     return {
       fileName,
+      sizeBytes: raw.length,
+      sha256,
+      json: jsonStats,
       skipped: true,
       reason: "already_imported_same_content",
       existingFileName: existingByHash.file_name
@@ -64,16 +89,6 @@ function importHealthFile(db, filePath) {
   const existingByName = db
     .prepare("SELECT id, sha256 FROM ingestions WHERE file_name = ?")
     .get(fileName);
-
-  const payload = JSON.parse(raw.toString("utf8"));
-  const metrics = payload?.data?.metrics;
-  if (!Array.isArray(metrics)) {
-    return {
-      fileName,
-      skipped: true,
-      reason: "missing_data_metrics"
-    };
-  }
 
   const importTx = db.transaction(() => {
     if (existingByName) {
@@ -112,6 +127,9 @@ function importHealthFile(db, filePath) {
 
     return {
       fileName,
+      sizeBytes: raw.length,
+      sha256,
+      json: jsonStats,
       imported: true,
       metricsCount: metrics.length,
       pointsCount
@@ -237,4 +255,110 @@ function parseAppleDate(value) {
 
 function numberOrNull(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getJsonStats(metrics) {
+  if (!Array.isArray(metrics)) {
+    return {
+      valid: false,
+      metricsCount: 0,
+      pointsCount: 0,
+      sleepDaysCount: 0
+    };
+  }
+
+  return {
+    valid: true,
+    metricsCount: metrics.length,
+    pointsCount: metrics.reduce(
+      (sum, metric) => sum + (Array.isArray(metric.data) ? metric.data.length : 0),
+      0
+    ),
+    sleepDaysCount:
+      metrics.find((metric) => metric.name === "sleep_analysis")?.data?.length ?? 0
+  };
+}
+
+function summarizeJsonFiles(results) {
+  return {
+    files: results.length,
+    validFiles: results.filter((result) => result.json?.valid).length,
+    metrics: results.reduce((sum, result) => sum + (result.json?.metricsCount ?? 0), 0),
+    points: results.reduce((sum, result) => sum + (result.json?.pointsCount ?? 0), 0),
+    sleepDays: results.reduce((sum, result) => sum + (result.json?.sleepDaysCount ?? 0), 0)
+  };
+}
+
+function summarizeImportedThisRun(results) {
+  const imported = results.filter((result) => result.imported);
+  return {
+    files: imported.length,
+    metrics: imported.reduce((sum, result) => sum + (result.metricsCount ?? 0), 0),
+    points: imported.reduce((sum, result) => sum + (result.pointsCount ?? 0), 0),
+    sleepDays: imported.reduce((sum, result) => sum + (result.json?.sleepDaysCount ?? 0), 0)
+  };
+}
+
+function getDatabaseStats(db) {
+  return {
+    ingestions: scalar(db, "SELECT COUNT(*) FROM ingestions"),
+    metricPoints: scalar(db, "SELECT COUNT(*) FROM metric_points"),
+    sleepDays: scalar(db, "SELECT COUNT(*) FROM sleep_days"),
+    dailySummaries: scalar(db, "SELECT COUNT(*) FROM daily_summaries"),
+    range: db
+      .prepare("SELECT MIN(day) AS firstDay, MAX(day) AS lastDay FROM metric_points WHERE day IS NOT NULL")
+      .get(),
+    ingestionPointsDeclared: scalar(db, "SELECT COALESCE(SUM(points_count), 0) FROM ingestions")
+  };
+}
+
+function getDatabaseChecks(db) {
+  const integrity = db.prepare("PRAGMA integrity_check").get().integrity_check;
+  const foreignKeyViolations = db.prepare("PRAGMA foreign_key_check").all().length;
+  const duplicateHashes = scalar(
+    db,
+    "SELECT COUNT(*) FROM (SELECT sha256 FROM ingestions GROUP BY sha256 HAVING COUNT(*) > 1)"
+  );
+  const orphanMetricPoints = scalar(
+    db,
+    "SELECT COUNT(*) FROM metric_points mp LEFT JOIN ingestions i ON i.id = mp.ingestion_id WHERE i.id IS NULL"
+  );
+  const orphanSleepDays = scalar(
+    db,
+    "SELECT COUNT(*) FROM sleep_days sd LEFT JOIN ingestions i ON i.id = sd.ingestion_id WHERE i.id IS NULL"
+  );
+  const ingestionPointMismatches = scalar(
+    db,
+    `
+    SELECT COUNT(*)
+    FROM ingestions i
+    LEFT JOIN (
+      SELECT ingestion_id, COUNT(*) AS actual_points
+      FROM metric_points
+      GROUP BY ingestion_id
+    ) mp ON mp.ingestion_id = i.id
+    WHERE i.points_count != COALESCE(mp.actual_points, 0)
+  `
+  );
+
+  return {
+    ok:
+      integrity === "ok" &&
+      foreignKeyViolations === 0 &&
+      duplicateHashes === 0 &&
+      orphanMetricPoints === 0 &&
+      orphanSleepDays === 0 &&
+      ingestionPointMismatches === 0,
+    integrity,
+    foreignKeyViolations,
+    duplicateHashes,
+    orphanMetricPoints,
+    orphanSleepDays,
+    ingestionPointMismatches
+  };
+}
+
+function scalar(db, sql) {
+  const row = db.prepare(sql).get();
+  return row[Object.keys(row)[0]];
 }

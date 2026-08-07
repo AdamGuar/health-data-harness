@@ -161,6 +161,19 @@ Manual reimport:
 npm run db:import
 ```
 
+The import command prints a deterministic audit summary after every run:
+
+```text
+json.files                 JSON files found in data/incoming/
+json.points                total metric rows counted in those JSON files
+importedThisRun.points     metric rows inserted during this run
+database.metricPoints      current metric rows in SQLite
+database.ingestionPointsDeclared
+checks.ok                  aggregate integrity result
+```
+
+For a healthy import, `checks.ok` should be `true`, and `database.metricPoints` should match `database.ingestionPointsDeclared`. If all files are already indexed, `importedThisRun.points` will be `0` and the database totals should remain unchanged.
+
 ## Health CLI
 
 These commands are the stable interface for Codex and ad hoc analysis:
