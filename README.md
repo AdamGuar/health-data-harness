@@ -275,3 +275,28 @@ data/*.sqlite-*
 ```
 
 Do not commit `.env`, raw exports, or the SQLite database.
+
+## Pre-Commit Guard
+
+Husky runs a pre-commit check that rejects staged private or generated local paths:
+
+```text
+.env
+.env.*
+data/
+.runtime/
+node_modules/
+.ngrok*
+ngrok.yml
+ngrok.yaml
+artifacts/health/reports/*
+artifacts/health/conversations/*
+```
+
+The `.gitkeep` files inside `artifacts/health/reports/` and `artifacts/health/conversations/` are allowed so the directory structure can stay in Git.
+
+Run the check manually:
+
+```powershell
+npm run precommit:check
+```

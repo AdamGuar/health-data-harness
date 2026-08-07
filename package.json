@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "husky",
+    "precommit:check": "node scripts/check-staged-private-paths.js",
     "start": "node src/import-incoming.js && node src/server.js",
     "serve": "node src/server.js",
     "dev": "node src/import-incoming.js && node --watch src/server.js",
@@ -25,5 +27,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "multer": "^2.2.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
