@@ -1,0 +1,28 @@
+{
+  "name": "health-data-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/import-incoming.js && node src/server.js",
+    "serve": "node src/server.js",
+    "dev": "node src/import-incoming.js && node --watch src/server.js",
+    "db:import": "node src/import-incoming.js",
+    "health:help": "node src/health-cli.js help",
+    "health:metrics": "node src/health-cli.js metrics",
+    "health:range": "node src/health-cli.js range",
+    "health:summary": "node src/health-cli.js summary",
+    "health:sleep": "node src/health-cli.js sleep",
+    "health:hr": "node src/health-cli.js hr",
+    "health:activity": "node src/health-cli.js activity",
+    "health:metric": "node src/health-cli.js metric",
+    "health:save": "node src/health-cli.js save",
+    "ngrok": "ngrok http 8080 --url https://impatient-ounce-unstaffed.ngrok-free.dev"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^2.2.0"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+.env
+data/
+artifacts/health/conversations/*
+artifacts/health/reports/*
+!artifacts/health/conversations/.gitkeep
+!artifacts/health/reports/.gitkeep
+.runtime/
+.ngrok*
+ngrok.yml
+ngrok.yaml
+npm-debug.log*
