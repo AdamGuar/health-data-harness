@@ -1,4 +1,4 @@
-# Health Chat Instructions
+# Health Instructions
 
 Use these instructions only when the task is about health-data analysis, Apple Health exports, sleep, activity, heart rate, HRV, health reports, or health conversation artifacts.
 

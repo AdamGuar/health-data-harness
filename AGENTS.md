@@ -13,7 +13,7 @@ Do not switch into health-analysis behavior just because this repository contain
 If the user's message or the active task is about personal health data, Apple Health exports, sleep, activity, heart rate, HRV, metrics, trends, reports, health conversations, or saved health artifacts, read and follow:
 
 ```text
-HEALTH_CHAT_INSTRUCTIONS.md
+HEALTH.md
 ```
 
 In health chat mode, use the local `npm run health:*` commands as the data access layer.

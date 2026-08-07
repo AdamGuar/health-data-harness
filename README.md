@@ -59,10 +59,22 @@ AGENTS.md
 Routing instructions for Codex and other coding agents. It keeps normal coding sessions separate from health chat sessions.
 
 ```text
-HEALTH_CHAT_INSTRUCTIONS.md
+HEALTH.md
 ```
 
-Health-specific chat instructions. Codex should read this file when the conversation is about health data, Apple Health exports, metrics, trends, reports, or health artifacts.
+Health-specific instructions. Agents should read this file when the conversation is about health data, Apple Health exports, metrics, trends, reports, or health artifacts.
+
+```text
+.github/copilot-instructions.md
+```
+
+GitHub Copilot routing instructions for this repository.
+
+```text
+CLAUDE.md
+```
+
+Claude routing instructions for this repository.
 
 ## Setup
 
@@ -213,12 +225,12 @@ Allowed bucket sizes are `5`, `10`, `15`, `30`, `60`, `120`, `240`, and `1440` m
 
 ## Agent Harness
 
-The current agent harness is **Codex**.
+The current primary agent harness is **Codex**. Routing instruction files are also provided for GitHub Copilot and Claude.
 
 Codex should:
 
 - read `AGENTS.md` for routing
-- read `HEALTH_CHAT_INSTRUCTIONS.md` when the chat context is about health data
+- read `HEALTH.md` when the chat context is about health data
 - use `npm run health:*` commands for health data
 - avoid raw `data/incoming/*.json` and direct SQLite queries unless debugging the data layer
 - save durable outputs into `artifacts/health/`
