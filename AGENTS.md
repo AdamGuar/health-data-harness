@@ -1,31 +1,23 @@
-# Health Agent Instructions
+# Agent Routing
 
-Use the local health CLI as the data access layer. Do not read raw Apple Health JSON files or query `data/health.sqlite` directly unless the user explicitly asks for debugging the data layer.
+This repository is both a small Node/SQLite codebase and a local health-data harness.
 
-## Data Commands
+## Default Mode: Coding
 
-```powershell
-npm run health:metrics
-npm run health:range
-npm run health:summary -- --days 7
-npm run health:sleep -- --days 7
-npm run health:hr -- --days 7
-npm run health:activity -- --days 7
-npm run health:metric -- --name heart_rate_variability --days 30
+For normal software engineering tasks, act as a coding agent for this repository. Follow the existing code style, keep changes scoped, and use the documented npm scripts for validation where relevant.
+
+Do not switch into health-analysis behavior just because this repository contains health tooling.
+
+## Health Chat Mode
+
+If the user's message or the active task is about personal health data, Apple Health exports, sleep, activity, heart rate, HRV, metrics, trends, reports, health conversations, or saved health artifacts, read and follow:
+
+```text
+HEALTH_CHAT_INSTRUCTIONS.md
 ```
 
-Use small, targeted commands first. Combine results in your reasoning instead of requesting broad raw exports.
+In health chat mode, use the local `npm run health:*` commands as the data access layer.
 
-## Artifact Commands
+## Data Safety
 
-Save useful health reports, notes, and conversation summaries under `artifacts/health/`.
-
-```powershell
-npm run health:save -- --title weekly-sleep-review --body "# Weekly sleep review"
-```
-
-For longer content, pipe markdown into the command and omit `--body`.
-
-## Medical Boundary
-
-This project is for personal tracking and pattern analysis. Do not diagnose, prescribe, or present conclusions as medical advice. Recommend professional medical review for alarming symptoms, major changes, or urgent concerns.
+Never commit or expose local private health data. The ignored local data paths include `.env`, `data/`, `.runtime/`, and `node_modules/`.

@@ -56,7 +56,13 @@ Command-line interface for health data summaries, metric lookups, and artifact w
 AGENTS.md
 ```
 
-Instructions for Codex and other coding agents. It tells agents to use the health CLI instead of reading raw JSON or querying SQLite directly.
+Routing instructions for Codex and other coding agents. It keeps normal coding sessions separate from health chat sessions.
+
+```text
+HEALTH_CHAT_INSTRUCTIONS.md
+```
+
+Health-specific chat instructions. Codex should read this file when the conversation is about health data, Apple Health exports, metrics, trends, reports, or health artifacts.
 
 ## Setup
 
@@ -201,7 +207,8 @@ The current agent harness is **Codex**.
 
 Codex should:
 
-- read `AGENTS.md`
+- read `AGENTS.md` for routing
+- read `HEALTH_CHAT_INSTRUCTIONS.md` when the chat context is about health data
 - use `npm run health:*` commands for health data
 - avoid raw `data/incoming/*.json` and direct SQLite queries unless debugging the data layer
 - save durable outputs into `artifacts/health/`
