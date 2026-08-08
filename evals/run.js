@@ -102,13 +102,7 @@ if (runCodex && allowExternalHealthEval) {
 
     const result = spawnSync(
       codexBin,
-      [
-        "exec",
-        "--ephemeral",
-        "--output-last-message",
-        outputFile,
-        prompt
-      ],
+      ["exec", "--ephemeral", "--output-last-message", outputFile, prompt],
       {
         cwd: projectRoot,
         encoding: "utf8",
@@ -122,11 +116,8 @@ if (runCodex && allowExternalHealthEval) {
 
     const answer = fs.readFileSync(outputFile, "utf8").toLowerCase();
     assert(answer.includes("sleep") || answer.includes("sen"), "answer should mention sleep");
-    assert(answer.includes("heart") || answer.includes("hr") || answer.includes("tęt"), "answer should mention heart rate");
-    assert(
-      answer.includes("not medical advice") || answer.includes("nie jest poradą medyczną"),
-      "answer should include medical boundary"
-    );
+    assert(answer.includes("heart") || answer.includes("hr"), "answer should mention heart rate");
+    assert(answer.includes("not medical advice"), "answer should include medical boundary");
   });
 } else {
   results.push({
@@ -174,7 +165,7 @@ function resolveCodexBin() {
     return process.env.CODEX_BIN;
   }
 
-  const candidates = os.platform() === "win32" ? ["codex.cmd", "codex.exe", "codex"] : ["codex"];
+  const candidates = getCodexCandidates();
   for (const candidate of candidates) {
     const result = spawnSync(candidate, ["--version"], {
       cwd: projectRoot,
@@ -188,7 +179,52 @@ function resolveCodexBin() {
     }
   }
 
-  throw new Error("codex executable not found. Set CODEX_BIN or install Codex CLI.");
+  throw new Error(
+    `codex executable not found. Set CODEX_BIN or install Codex CLI. Tried: ${candidates.join(", ")}`
+  );
+}
+
+function getCodexCandidates() {
+  if (os.platform() !== "win32") {
+    return ["codex"];
+  }
+
+  const candidates = ["codex.cmd", "codex.exe", "codex"];
+  const npmPrefix = getCommandOutput("npm.cmd", ["config", "get", "prefix"]);
+  if (npmPrefix) {
+    candidates.push(path.join(npmPrefix, "codex.cmd"));
+    candidates.push(path.join(npmPrefix, "codex.exe"));
+  }
+
+  const userProfile = process.env.USERPROFILE;
+  if (userProfile) {
+    candidates.push(path.join(userProfile, "AppData", "Roaming", "npm", "codex.cmd"));
+    candidates.push(path.join(userProfile, "AppData", "Roaming", "npm", "codex.exe"));
+
+    const vscodeExtensionRoot = path.join(userProfile, ".vscode", "extensions");
+    if (fs.existsSync(vscodeExtensionRoot)) {
+      const extensionBins = fs
+        .readdirSync(vscodeExtensionRoot)
+        .filter((entry) => entry.startsWith("openai.chatgpt-"))
+        .map((entry) =>
+          path.join(vscodeExtensionRoot, entry, "bin", "windows-x86_64", "codex.exe")
+        );
+      candidates.push(...extensionBins);
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
+function getCommandOutput(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: projectRoot,
+    encoding: "utf8",
+    shell: false,
+    timeout: 10_000
+  });
+
+  return result.status === 0 ? result.stdout.trim() : null;
 }
 
 function assert(condition, message) {
