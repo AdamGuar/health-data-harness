@@ -6,6 +6,8 @@
   "scripts": {
     "prepare": "husky",
     "precommit:check": "node scripts/check-staged-private-paths.js",
+    "evals": "node evals/run.js",
+    "evals:codex": "node evals/run.js --codex",
     "start": "node src/import-incoming.js && node src/server.js",
     "serve": "node src/server.js",
     "dev": "node src/import-incoming.js && node --watch src/server.js",

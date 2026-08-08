@@ -6,6 +6,7 @@ artifacts/health/reports/*
 !artifacts/health/conversations/.gitkeep
 !artifacts/health/reports/.gitkeep
 .runtime/
+evals/.tmp/
 .ngrok*
 ngrok.yml
 ngrok.yaml

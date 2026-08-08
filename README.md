@@ -247,6 +247,31 @@ User asks a health question
 
 This keeps the chat flexible while keeping data access constrained and repeatable.
 
+## Evals
+
+Run deterministic local evals:
+
+```powershell
+npm run evals
+```
+
+The default eval suite checks import consistency, core health CLI commands, and bucketed heart-rate queries. It does not call a model.
+
+Run optional Codex-backed evals:
+
+```powershell
+npm run evals:codex
+```
+
+The Codex eval uses `codex exec --ephemeral` and asks Codex to answer a health question through the local CLI layer. Because this can send aggregated health summaries to Codex/OpenAI, it is skipped unless you explicitly opt in:
+
+```powershell
+$env:ALLOW_EXTERNAL_HEALTH_EVAL = "1"
+npm run evals:codex
+```
+
+On Windows, if PowerShell blocks `codex.ps1`, the eval runner tries `codex.cmd`; you can also set `CODEX_BIN` to an explicit executable path.
+
 ## Artifacts
 
 Reports and conversation notes live under:
